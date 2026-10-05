@@ -41,8 +41,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 
 
-# Copy Composer files first
-COPY composer.json composer.lock ./
+# Copy the complete Laravel application
+COPY . .
 
 
 # Install PHP dependencies
@@ -51,10 +51,6 @@ RUN composer install \
     --optimize-autoloader \
     --no-interaction \
     --prefer-dist
-
-
-# Copy Laravel application
-COPY . .
 
 
 # Copy compiled React/Vite assets
@@ -74,7 +70,7 @@ RUN mkdir -p \
 RUN chmod -R 775 storage bootstrap/cache
 
 
-# Render will provide PORT automatically
+# Render provides PORT automatically
 EXPOSE 10000
 
 
