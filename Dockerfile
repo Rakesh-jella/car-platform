@@ -26,13 +26,12 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     zip \
-    libpq-dev \
     libzip-dev \
     libpng-dev \
     libonig-dev \
     && docker-php-ext-install \
-        pdo_pgsql \
-        pgsql \
+        pdo_mysql \
+        mysqli \
         zip \
         mbstring \
         gd \
