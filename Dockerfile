@@ -132,6 +132,9 @@ RUN printf '%s\n' \
     'php artisan route:clear || true' \
     'php artisan view:clear || true' \
     '' \
+    '# Run database migrations' \
+    'php artisan migrate --force' \
+    '' \
     '# Cache Laravel configuration when APP_KEY exists' \
     'if [ -n "$APP_KEY" ]; then' \
     '    php artisan config:cache' \
