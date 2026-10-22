@@ -1,10 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { useState, useMemo } from 'react';
+import type { PageProps } from '@/types';
 
 type Statistics = {
     vehicles: number;
     ready_for_sale: number;
+    rental_vehicles: number;
     in_transit: number;
     imported_vehicles: number;
     manufactured_vehicles: number;
@@ -15,23 +16,32 @@ type Statistics = {
     low_stock_items: number;
     manufacturing_orders: number;
     vehicle_sales_value: number;
+    parts_count?: number;
+    styling_count?: number;
+    sports_racing_count?: number;
+    store_orders_count?: number;
+    store_orders_total_value?: number;
+    store_orders_advance_value?: number;
 };
 
-type ImportRequest = {
-    reference: string | null;
-    customer: string;
-    vehicle: string;
-    country: string;
-    status: string;
+type Alert = {
+    id: number;
+    message: string;
+    category: string;
+    part_name: string;
     created_at: string;
 };
 
-type Vehicle = {
+type StoreOrder = {
     reference: string;
-    name: string;
-    source: string;
+    customer: string;
+    product: string;
+    category: string;
+    order_type: string;
     status: string;
-    price: number;
+    total: number;
+    advance: number;
+    created_at: string;
 };
 
 type LowStockItem = {
@@ -44,639 +54,441 @@ type LowStockItem = {
 type DashboardProps = {
     statistics: Statistics;
     lowStockItems: LowStockItem[];
-    recentImportRequests: ImportRequest[];
-    recentVehicles: Vehicle[];
+    inventoryAlerts: Alert[];
+    recentStoreOrders: StoreOrder[];
 };
 
-type ShowcaseCar = {
-    id: string;
-    name: string;
-    subtitle: string;
-    rating: string;
-    ratingCount: string;
-    location: string;
-    pricePerDay: string;
-    transmission: string;
-    range: string;
-    tier: string;
-    seats: string;
-    brand: string;
-    image: string;
-};
+const number = new Intl.NumberFormat('en-IN');
+const currency = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+});
 
-const INITIAL_CARS: ShowcaseCar[] = [
-    {
-        id: 'bmw-3-series',
-        name: 'BMW 3 Series Sedan',
-        subtitle: 'The 3 Sedan',
-        rating: '4.9',
-        ratingCount: '100+',
-        location: 'Jl Kendalsari V, Malang',
-        pricePerDay: '87.44',
-        transmission: 'Automatic',
-        range: '250km',
-        tier: 'Premium',
-        seats: '4 Seat',
-        brand: 'BMW',
-        image: 'https://pngimg.com/d/bmw_PNG1710.png',
-    },
-    {
-        id: 'mercedes-c-class',
-        name: 'Mercedes-Benz C-Class',
-        subtitle: 'The 3 Sedan',
-        rating: '4.9',
-        ratingCount: '100',
-        location: 'Malang, East Java',
-        pricePerDay: '60.20',
-        transmission: 'Automatic',
-        range: '250km',
-        tier: 'Premium',
-        seats: '4 Seat',
-        brand: 'Mercedes',
-        image: 'https://pngimg.com/d/mercedes_PNG80135.png',
-    },
-    {
-        id: 'audi-q5-suv',
-        name: 'Audi Q5 SUV',
-        subtitle: 'The 3 Sedan',
-        rating: '4.9',
-        ratingCount: '100',
-        location: 'Jl Merdeka Raya No. 21, Malang',
-        pricePerDay: '97.82',
-        transmission: 'Automatic',
-        range: '250km',
-        tier: 'Premium',
-        seats: '4 Seat',
-        brand: 'Audi A4',
-        image: 'https://pngimg.com/d/audi_PNG1736.png',
-    },
-    {
-        id: 'toyota-camry',
-        name: 'Toyota Camry Sedan',
-        subtitle: 'The 3 Sedan',
-        rating: '4.9',
-        ratingCount: '100',
-        location: 'Central Malang, East Java',
-        pricePerDay: '120.70',
-        transmission: 'Automatic',
-        range: '250km',
-        tier: 'Premium',
-        seats: '4 Seat',
-        brand: 'Toyota',
-        image: 'https://pngimg.com/d/toyota_PNG1912.png',
-    },
-];
+export default function Dashboard({ statistics, lowStockItems, inventoryAlerts, recentStoreOrders }: DashboardProps) {
+    const { flash, auth } = usePage<PageProps>().props;
 
-const BRANDS = ['BMW', 'Honda', 'Toyota', 'Mazda', 'Nissan', 'Audi A4', 'Mercedes'];
+    const categories = [
+        {
+            name: 'Normal Cars (Sale & Rent)',
+            count: statistics.vehicles,
+            subtitle: `${statistics.ready_for_sale} for sale · ${statistics.rental_vehicles ?? 0} for rent`,
+            href: '/cars',
+            tag: 'Automobiles',
+            icon: '🚘',
+            badgeColor: 'bg-amber-500/10 text-amber-500 border border-amber-500/20',
+        },
+        {
+            name: 'Replacement Parts',
+            count: statistics.parts_count ?? 12,
+            subtitle: 'Mechanical, brakes, turbo & engine',
+            href: '/parts',
+            tag: 'Mechanical',
+            icon: '⚙️',
+            badgeColor: 'bg-blue-500/10 text-blue-500 border border-blue-500/20',
+        },
+        {
+            name: 'Car Styling & Upgrades',
+            count: statistics.styling_count ?? 7,
+            subtitle: 'Spoilers, alloys, LED & aero kits',
+            href: '/parts',
+            tag: 'Aesthetics',
+            icon: '✨',
+            badgeColor: 'bg-purple-500/10 text-purple-500 border border-purple-500/20',
+        },
+        {
+            name: 'Sports & Racing Gear',
+            count: statistics.sports_racing_count ?? 9,
+            subtitle: 'Roll cages, bucket seats & nitrous',
+            href: '/parts',
+            tag: 'Motorsport',
+            icon: '🏁',
+            badgeColor: 'bg-rose-500/10 text-rose-500 border border-rose-500/20',
+        },
+    ];
 
-const HISTOGRAM_BARS = [
-    14, 18, 22, 28, 34, 30, 26, 22, 18, 22, 28, 36, 46, 56, 68, 76, 84, 92,
-    88, 76, 64, 52, 42, 34, 28, 22, 16, 12, 10
-];
-
-export default function MotiveDashboard({
-    statistics,
-}: DashboardProps) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-    const [selectedBookingCar, setSelectedBookingCar] = useState<ShowcaseCar | null>(null);
-
-    // Form states
-    const [pickupLoc, setPickupLoc] = useState('');
-    const [dropoffLoc, setDropoffLoc] = useState('');
-    const [pickupDate, setPickupDate] = useState('19/01/2025');
-    const [pickupTime, setPickupTime] = useState('07:00 AM');
-    const [dropoffDate, setDropoffDate] = useState('19/01/2025');
-    const [dropoffTime, setDropoffTime] = useState('07:00 AM');
-
-    const handleResetFilters = () => {
-        setSearchQuery('');
-        setSelectedBrand(null);
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'completed':
+            case 'paid':
+                return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+            case 'advance_pending':
+                return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
+            case 'payment_pending':
+                return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20';
+            default:
+                return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20';
+        }
     };
 
-    const filteredCars = useMemo(() => {
-        return INITIAL_CARS.filter((car) => {
-            const matchesSearch =
-                !searchQuery.trim() ||
-                car.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                car.location.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesBrand =
-                !selectedBrand || car.brand.toLowerCase() === selectedBrand.toLowerCase();
-            return matchesSearch && matchesBrand;
-        });
-    }, [searchQuery, selectedBrand]);
+    const getOrderTypeBadge = (type: string) => {
+        switch (type) {
+            case 'rental_booking':
+                return 'bg-purple-500/10 text-purple-600 dark:text-purple-400';
+            case 'booking':
+                return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+            default:
+                return 'bg-slate-500/10 text-slate-600 dark:text-slate-400';
+        }
+    };
 
     return (
-        <AdminLayout hideDefaultTitle={true}>
-            <Head title="Motive - All In One Car Platform" />
+        <AdminLayout
+            title="Enterprise ERP Dashboard"
+            subtitle="Real-time warehouse inventory, customer storefront orders, and category stock tracking."
+            actions={
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/admin/warehouse"
+                        className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300 transition shadow-sm"
+                    >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        <span>Receive Stock</span>
+                    </Link>
+                </div>
+            }
+        >
+            <Head title="Warehouse ERP Dashboard" />
 
-            <div className="space-y-8 w-full max-w-[1720px] mx-auto">
-                {/* HERO BOOKING & SEARCH CARD */}
-                <section className="rounded-3xl bg-white dark:bg-slate-900 p-8 sm:p-10 shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col xl:flex-row items-center justify-between gap-10 transition-colors">
-                    
-                    {/* Left Banner Section */}
-                    <div className="flex-1 max-w-xl">
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                            All In One Car Platform
-                        </h2>
-                        <p className="mt-3 text-sm sm:text-base text-gray-500 dark:text-slate-400 font-medium">
-                            Renting a car gives your freedom, and we&apos;ll help you
-                        </p>
-
-                        {/* 3 Sports Cars Graphic */}
-                        <div className="mt-8 flex items-center justify-start gap-1 relative overflow-visible h-32 sm:h-40">
-                            {/* Red Car (Left) */}
-                            <div className="w-32 sm:w-44 -mr-10 z-10 transition-transform hover:scale-105 hover:z-30 duration-200">
-                                <img
-                                    src="https://pngimg.com/d/audi_PNG1736.png"
-                                    alt="Red car"
-                                    className="w-full object-contain filter drop-shadow-md"
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                />
-                            </div>
-
-                            {/* Blue Car (Center - Primary) */}
-                            <div className="w-44 sm:w-56 z-20 transition-transform hover:scale-110 duration-200">
-                                <img
-                                    src="https://pngimg.com/d/bmw_PNG1710.png"
-                                    alt="Blue car"
-                                    className="w-full object-contain filter drop-shadow-xl"
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                />
-                            </div>
-
-                            {/* White / Metallic Car (Right) */}
-                            <div className="w-32 sm:w-44 -ml-10 z-10 transition-transform hover:scale-105 hover:z-30 duration-200">
-                                <img
-                                    src="https://pngimg.com/d/mercedes_PNG80135.png"
-                                    alt="White car"
-                                    className="w-full object-contain filter drop-shadow-md"
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                />
-                            </div>
-                        </div>
+            <div className="space-y-8">
+                {/* Flash Messages */}
+                {flash.success && (
+                    <div role="status" className="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-sm font-semibold text-emerald-900 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200 shadow-sm">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white text-xs">✓</span>
+                        <span>{flash.success}</span>
                     </div>
+                )}
 
-                    {/* Right Side: Pick-up & Drop-off Location + DateTime Form */}
-                    <div className="w-full xl:w-[680px] grid sm:grid-cols-2 gap-6 shrink-0">
-                        {/* Column 1: Pick-up */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                    Pick-up Location
-                                </label>
-                                <div className="relative">
-                                    <svg className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="12" cy="12" r="3" />
-                                        <circle cx="12" cy="12" r="8" />
-                                    </svg>
-                                    <input
-                                        type="text"
-                                        value={pickupLoc}
-                                        onChange={(e) => setPickupLoc(e.target.value)}
-                                        placeholder="Enter City, Airport, or Address"
-                                        className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-11 pr-4 py-3 text-xs sm:text-sm text-slate-800 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                        Pick-up Date
-                                    </label>
-                                    <div className="relative">
-                                        <svg className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                                            <line x1="16" y1="2" x2="16" y2="6" />
-                                            <line x1="8" y1="2" x2="8" y2="6" />
-                                            <line x1="3" y1="10" x2="21" y2="10" />
-                                        </svg>
-                                        <input
-                                            type="text"
-                                            value={pickupDate}
-                                            onChange={(e) => setPickupDate(e.target.value)}
-                                            className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-10 pr-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                        Pick-up Time
-                                    </label>
-                                    <div className="relative">
-                                        <svg className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <input
-                                            type="text"
-                                            value={pickupTime}
-                                            onChange={(e) => setPickupTime(e.target.value)}
-                                            className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-10 pr-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Column 2: Drop-off */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                    Drop-off Location
-                                </label>
-                                <div className="relative">
-                                    <svg className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="12" cy="12" r="3" />
-                                        <circle cx="12" cy="12" r="8" />
-                                    </svg>
-                                    <input
-                                        type="text"
-                                        value={dropoffLoc}
-                                        onChange={(e) => setDropoffLoc(e.target.value)}
-                                        placeholder="Enter City, Airport, or Address"
-                                        className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-11 pr-4 py-3 text-xs sm:text-sm text-slate-800 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                        Drop-off Date
-                                    </label>
-                                    <div className="relative">
-                                        <svg className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" />
-                                            <line x1="16" y1="2" x2="16" y2="6" />
-                                            <line x1="8" y1="2" x2="8" y2="6" />
-                                            <line x1="3" y1="10" x2="21" y2="10" />
-                                        </svg>
-                                        <input
-                                            type="text"
-                                            value={dropoffDate}
-                                            onChange={(e) => setDropoffDate(e.target.value)}
-                                            className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-10 pr-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wider">
-                                        Drop-off Time
-                                    </label>
-                                    <div className="relative">
-                                        <svg className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <input
-                                            type="text"
-                                            value={dropoffTime}
-                                            onChange={(e) => setDropoffTime(e.target.value)}
-                                            className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-10 pr-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* MAIN SPLIT: FILTER PLANS (LEFT) + CAR GRID (RIGHT) */}
-                <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 items-start">
-                    
-                    {/* LEFT FILTER PLANS CARD */}
-                    <aside className="rounded-3xl bg-white dark:bg-slate-900 p-7 shadow-sm border border-gray-100 dark:border-slate-800 space-y-7 transition-colors">
-                        {/* Header */}
+                {/* KPI TOP METRICS */}
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Vehicles Card */}
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition hover:shadow-md">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                                Filter Plans
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Showroom Fleet</p>
+                            <span className="rounded-xl bg-amber-400/10 p-2.5 text-amber-500 dark:bg-amber-400/20">
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                                    <circle cx="7" cy="17" r="2" />
+                                    <circle cx="17" cy="17" r="2" />
+                                </svg>
+                            </span>
+                        </div>
+                        <div className="mt-4 flex items-baseline gap-2">
+                            <h3 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                                {number.format(statistics.ready_for_sale)}
                             </h3>
-                            <button
-                                type="button"
-                                onClick={handleResetFilters}
-                                className="text-xs font-bold text-gray-400 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
-                            >
-                                Reset
-                            </button>
+                            <span className="text-xs font-semibold text-emerald-500">Ready</span>
                         </div>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            {statistics.rental_vehicles ?? 0} active rentals · {statistics.in_transit} in customs
+                        </p>
+                    </div>
 
-                        {/* Search Input */}
-                        <div className="relative">
-                            <svg className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="11" cy="11" r="7" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                            <input
-                                type="text"
-                                placeholder="Search"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full rounded-2xl bg-[#f4f5f7] dark:bg-slate-800 border-0 pl-11 pr-4 py-3 text-xs sm:text-sm text-slate-800 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-[#ffa31a] transition"
-                            />
+                    {/* Stock Lines Card */}
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition hover:shadow-md">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Catalog Lines</p>
+                            <span className="rounded-xl bg-blue-500/10 p-2.5 text-blue-500 dark:bg-blue-500/20">
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                                    <path d="m3.3 7 8.7 5 8.7-5" />
+                                    <path d="M12 22V12" />
+                                </svg>
+                            </span>
                         </div>
-
-                        {/* Price & Budget Histogram Section */}
-                        <div>
-                            <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
-                                Price &amp; Budget
-                            </h4>
-                            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
-                                Average range $34
-                            </p>
-
-                            {/* Histogram Graphic with Highlighted Orange Selection */}
-                            <div className="mt-5 pt-2">
-                                <div className="flex items-end justify-between h-20 gap-[3px] px-1 relative">
-                                    {/* Left orange boundary line */}
-                                    <div className="absolute left-[38%] top-0 bottom-0 w-[2px] bg-[#ffa31a] z-10" />
-                                    {/* Right orange boundary line */}
-                                    <div className="absolute left-[68%] top-0 bottom-0 w-[2px] bg-[#ffa31a] z-10" />
-
-                                    {HISTOGRAM_BARS.map((height, idx) => {
-                                        const isHighlighted = idx >= 11 && idx <= 20;
-                                        return (
-                                            <div
-                                                key={idx}
-                                                style={{ height: `${height}%` }}
-                                                className={`w-full rounded-t-sm transition-all duration-150 ${
-                                                    isHighlighted
-                                                        ? 'bg-[#ffa31a]'
-                                                        : 'bg-gray-200 dark:bg-slate-800'
-                                                }`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Scale marks */}
-                                <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500 font-semibold mt-2.5 px-1">
-                                    <span>0</span>
-                                    <span>20</span>
-                                    <span>40</span>
-                                    <span>60</span>
-                                    <span>80</span>
-                                    <span>100</span>
-                                </div>
-                            </div>
-
-                            {/* Two Price Input / Readout Cards */}
-                            <div className="grid grid-cols-2 gap-3.5 mt-5">
-                                <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800 bg-[#f8f9fa] dark:bg-slate-800/60 p-3.5">
-                                    <p className="text-xs font-semibold text-gray-400 dark:text-slate-400">Main Price</p>
-                                    <p className="text-base font-black text-slate-900 dark:text-white mt-1">$120</p>
-                                </div>
-                                <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800 bg-[#f8f9fa] dark:bg-slate-800/60 p-3.5">
-                                    <p className="text-xs font-semibold text-gray-400 dark:text-slate-400">Max price</p>
-                                    <p className="text-base font-black text-slate-900 dark:text-white mt-1">$420</p>
-                                </div>
-                            </div>
+                        <div className="mt-4 flex items-baseline gap-2">
+                            <h3 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                                {number.format(statistics.inventory_items)}
+                            </h3>
+                            <span className="text-xs font-semibold text-slate-400">SKUs</span>
                         </div>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            Across {statistics.warehouses} regional hubs
+                        </p>
+                    </div>
 
-                        {/* Brand & Model Pills */}
-                        <div>
-                            <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
-                                Brand &amp; Model
-                            </h4>
-                            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1 mb-3.5">
-                                Brand
-                            </p>
-
-                            <div className="flex flex-wrap gap-2.5">
-                                {BRANDS.map((brand) => {
-                                    const isActive = selectedBrand === brand;
-                                    return (
-                                        <button
-                                            key={brand}
-                                            type="button"
-                                            onClick={() =>
-                                                setSelectedBrand(isActive ? null : brand)
-                                            }
-                                            className={`rounded-xl px-3.5 py-2 text-xs font-bold border transition ${
-                                                isActive
-                                                    ? 'bg-[#ffa31a] text-white border-[#ffa31a] shadow-sm'
-                                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-gray-200 dark:border-slate-700 hover:border-gray-400'
-                                            }`}
-                                        >
-                                            {brand}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                    {/* Customer Orders Card */}
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition hover:shadow-md">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Store Orders</p>
+                            <span className="rounded-xl bg-purple-500/10 p-2.5 text-purple-500 dark:bg-purple-500/20">
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="8" cy="21" r="1" />
+                                    <circle cx="19" cy="21" r="1" />
+                                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                                </svg>
+                            </span>
                         </div>
+                        <div className="mt-4 flex items-baseline gap-2">
+                            <h3 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                                {number.format(statistics.store_orders_count ?? recentStoreOrders.length)}
+                            </h3>
+                            <span className="text-xs font-semibold text-purple-500">Active</span>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            Advance: {currency.format(statistics.store_orders_advance_value ?? 93500)}
+                        </p>
+                    </div>
 
-                        {/* Operational ERP Quick Glance */}
-                        <div className="border-t border-gray-100 dark:border-slate-800 pt-5">
-                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
-                                <span>Active Showroom Fleet</span>
-                                <span className="font-extrabold text-slate-900 dark:text-white">{statistics.vehicles} units</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mt-2">
-                                <span>Pending Import Inquiries</span>
-                                <span className="font-extrabold text-[#ffa31a]">{statistics.pending_import_requests}</span>
-                            </div>
+                    {/* Low Stock Alerts Card */}
+                    <div className={`relative overflow-hidden rounded-2xl border p-6 shadow-sm transition hover:shadow-md ${
+                        statistics.low_stock_items > 0
+                            ? 'border-rose-300 bg-rose-50/50 dark:border-rose-900/60 dark:bg-rose-950/20'
+                            : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900'
+                    }`}>
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Stock Alerts</p>
+                            <span className={`rounded-xl p-2.5 ${statistics.low_stock_items > 0 ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                    <line x1="12" y1="9" x2="12" y2="13" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                            </span>
+                        </div>
+                        <div className="mt-4 flex items-baseline gap-2">
+                            <h3 className={`text-3xl font-black tracking-tight ${statistics.low_stock_items > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+                                {number.format(statistics.low_stock_items)}
+                            </h3>
+                            <span className={`text-xs font-semibold ${statistics.low_stock_items > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-500'}`}>
+                                {statistics.low_stock_items > 0 ? 'Action Needed' : 'All Healthy'}
+                            </span>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            {inventoryAlerts.length} sold-out notifications
+                        </p>
+                    </div>
+                </div>
+
+                {/* CATEGORY BREAKDOWN CARDS */}
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                            Category Stock & Storefront Breakdown
+                        </h2>
+                        <span className="text-xs text-slate-400">4 Core Business Categories</span>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {categories.map((cat) => (
                             <Link
-                                href="/cars"
-                                className="mt-4 block text-center rounded-2xl bg-gray-100 dark:bg-slate-800 py-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                                key={cat.name}
+                                href={cat.href}
+                                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-amber-400 dark:border-slate-800 dark:bg-slate-900 transition"
                             >
-                                View Full ERP Inventory →
-                            </Link>
-                        </div>
-                    </aside>
-
-                    {/* RIGHT CAR GRID (2x2 BIGGER CAR CARDS) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {filteredCars.map((car) => (
-                            <article
-                                key={car.id}
-                                className="rounded-3xl bg-white dark:bg-slate-900 p-6 lg:p-7 shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col justify-between transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
-                            >
-                                <div>
-                                    {/* Header: Name + Rating */}
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <h3 className="text-lg font-black text-slate-900 dark:text-white leading-snug">
-                                                {car.name}
-                                            </h3>
-                                            <p className="text-xs sm:text-sm text-gray-400 dark:text-slate-400 font-medium mt-1">
-                                                {car.subtitle}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex items-center gap-1 shrink-0 text-xs font-black text-slate-800 dark:text-slate-200">
-                                            <span className="text-[#ffa31a] text-sm">★</span>
-                                            <span>{car.rating}</span>
-                                            <span className="text-gray-400 dark:text-slate-500 font-normal">({car.ratingCount})</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Vehicle Image Rendering with shadow */}
-                                    <div className="my-6 flex items-center justify-center h-44 relative">
-                                        <img
-                                            src={car.image}
-                                            alt={car.name}
-                                            className="max-h-full max-w-full object-contain filter drop-shadow-2xl transition-transform hover:scale-105 duration-300"
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src =
-                                                    'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=500&q=80';
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Location & Daily Rate */}
-                                    <div className="flex items-center justify-between gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
-                                        <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-400 truncate">
-                                            <svg className="h-4 w-4 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                                <circle cx="12" cy="10" r="3" />
-                                            </svg>
-                                            <span className="truncate">{car.location}</span>
-                                        </div>
-
-                                        <div className="text-right shrink-0">
-                                            <span className="text-lg font-black text-slate-900 dark:text-white">
-                                                ${car.pricePerDay}
-                                            </span>
-                                            <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">
-                                                /Day
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Specifications Row */}
-                                    <div className="mt-4 flex items-center justify-between text-xs text-gray-600 dark:text-slate-300 bg-[#f8f9fa] dark:bg-slate-800/60 rounded-2xl px-3.5 py-2.5">
-                                        <span className="flex items-center gap-1 font-medium">
-                                            <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <circle cx="12" cy="12" r="3" />
-                                            </svg>
-                                            {car.transmission}
-                                        </span>
-
-                                        <span className="flex items-center gap-1 font-medium">
-                                            <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                                            </svg>
-                                            {car.range}
-                                        </span>
-
-                                        <span className="flex items-center gap-1 font-medium">
-                                            <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                            </svg>
-                                            {car.tier}
-                                        </span>
-
-                                        <span className="flex items-center gap-1 font-medium">
-                                            <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                                                <circle cx="12" cy="7" r="4" />
-                                            </svg>
-                                            {car.seats}
-                                        </span>
-                                    </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-3xl">{cat.icon}</span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cat.badgeColor}`}>
+                                        {cat.tag}
+                                    </span>
                                 </div>
+                                <h3 className="mt-4 font-bold text-slate-900 dark:text-white group-hover:text-amber-500 transition">
+                                    {cat.name}
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-400 leading-relaxed">{cat.subtitle}</p>
+                                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                                    <span className="text-xl font-black text-slate-900 dark:text-white">{cat.count} items</span>
+                                    <span className="text-xs font-bold text-amber-500 flex items-center gap-1 group-hover:translate-x-1 transition">
+                                        View →
+                                    </span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
 
-                                {/* Action Button: Rent Now */}
-                                <div className="mt-5">
+                {/* SOLD-OUT INVENTORY ALERTS (URGENT) */}
+                <section className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 dark:border-amber-900/60 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black">
+                                🔔
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                                    Sold-Out & Category Depletion Alerts
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Automatic triggers when inventory hits 0 for any automotive category.
+                                </p>
+                            </div>
+                        </div>
+
+                        <Link
+                            href="/admin/warehouse"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300 transition shadow-sm"
+                        >
+                            <span>Manage Warehouse Stock</span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    </div>
+
+                    {inventoryAlerts.length === 0 ? (
+                        <div className="mt-4 rounded-xl border border-slate-200/60 bg-white/70 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70">
+                            ✓ No active sold-out alerts. All catalog categories have available units.
+                        </div>
+                    ) : (
+                        <div className="mt-4 space-y-2.5">
+                            {inventoryAlerts.map((alert) => (
+                                <div
+                                    key={alert.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-900/50 dark:bg-slate-900 transition hover:shadow"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+                                        <div>
+                                            <p className="font-bold text-sm text-slate-900 dark:text-white">{alert.message}</p>
+                                            <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                                                <span className="capitalize font-medium text-amber-500">
+                                                    Category: {alert.category.replaceAll('_', ' ')}
+                                                </span>
+                                                <span>·</span>
+                                                <span>Logged: {alert.created_at}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={() => setSelectedBookingCar(car)}
-                                        className="w-full rounded-2xl bg-[#1e1e1e] hover:bg-black dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-white text-xs sm:text-sm font-bold py-3.5 transition shadow-sm hover:shadow"
+                                        onClick={() => router.patch(`/admin/inventory-alerts/${alert.id}/acknowledge`)}
+                                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 transition"
                                     >
-                                        Rent Now
+                                        Mark Reviewed
                                     </button>
                                 </div>
-                            </article>
-                        ))}
+                            ))}
+                        </div>
+                    )}
+                </section>
 
-                        {filteredCars.length === 0 && (
-                            <div className="col-span-full rounded-3xl bg-white dark:bg-slate-900 p-12 text-center text-gray-400 border border-gray-100 dark:border-slate-800">
-                                <p className="text-lg font-bold text-slate-700 dark:text-slate-200">No cars found matching filters.</p>
-                                <button
-                                    type="button"
-                                    onClick={handleResetFilters}
-                                    className="mt-4 inline-flex items-center rounded-2xl bg-[#ffa31a] px-5 py-2.5 text-xs font-bold text-white shadow-sm"
-                                >
-                                    Reset Filters
-                                </button>
+                {/* CUSTOMER STOREFRONT ORDERS TABLE */}
+                <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex flex-wrap items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                                Recent Customer Store Orders
+                            </h2>
+                            <p className="text-xs text-slate-400 mt-1">
+                                Real-time customer purchases, car bookings (₹50k advance), and rental requests.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400">Live feed</span>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[850px] text-left text-sm">
+                            <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:bg-slate-950/60">
+                                <tr>
+                                    <th className="px-6 py-3.5">Order Reference</th>
+                                    <th className="px-6 py-3.5">Customer</th>
+                                    <th className="px-6 py-3.5">Product & Category</th>
+                                    <th className="px-6 py-3.5">Order Type</th>
+                                    <th className="px-6 py-3.5">Amount & Advance</th>
+                                    <th className="px-6 py-3.5">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                {recentStoreOrders.map((order) => (
+                                    <tr key={order.reference} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                                        <td className="px-6 py-4 font-mono font-bold text-xs text-amber-500">
+                                            {order.reference}
+                                            <p className="text-[10px] font-sans font-normal text-slate-400 mt-0.5">{order.created_at}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="h-7 w-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200">
+                                                    {order.customer ? order.customer.charAt(0).toUpperCase() : 'C'}
+                                                </div>
+                                                <span className="font-semibold text-slate-900 dark:text-white text-xs">{order.customer}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-xs text-slate-800 dark:text-slate-100">{order.product}</p>
+                                            <span className="inline-block mt-0.5 text-[10px] font-medium uppercase text-slate-400">
+                                                {order.category.replaceAll('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold capitalize ${getOrderTypeBadge(order.order_type)}`}>
+                                                {order.order_type.replaceAll('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="font-black text-xs text-slate-900 dark:text-white">
+                                                {currency.format(order.total)}
+                                            </p>
+                                            {order.advance > 0 && (
+                                                <p className="text-[11px] font-bold text-amber-500">
+                                                    Advance: {currency.format(order.advance)}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${getStatusBadge(order.status)}`}>
+                                                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                                <span>{order.status.replaceAll('_', ' ')}</span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {recentStoreOrders.length === 0 && (
+                            <div className="p-12 text-center text-sm text-slate-400">
+                                No customer orders recorded yet. As customers book cars or buy parts, they will show here.
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
+                </section>
 
-            {/* BOOKING CONFIRMATION MODAL */}
-            {selectedBookingCar && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-7 shadow-2xl border border-gray-100 dark:border-slate-800 space-y-5">
-                        <div className="flex items-start justify-between">
+                {/* LOW STOCK REORDER REMINDERS */}
+                {lowStockItems.length > 0 && (
+                    <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-center justify-between mb-4">
                             <div>
-                                <span className="text-xs font-bold uppercase tracking-wider text-[#ffa31a]">
-                                    Instant Booking Reservation
-                                </span>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                                    {selectedBookingCar.name}
-                                </h3>
-                                <p className="text-xs text-gray-400 dark:text-slate-400">{selectedBookingCar.location}</p>
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                                    Inventory Reorder Reminders
+                                </h2>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    Items that have fallen below their warehouse safety threshold.
+                                </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedBookingCar(null)}
-                                className="h-9 w-9 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700"
-                            >
-                                ✕
-                            </button>
+                            <Link href="/admin/warehouse" className="text-xs font-bold text-amber-500 hover:underline">
+                                Restock All →
+                            </Link>
                         </div>
 
-                        <div className="h-40 flex items-center justify-center bg-[#f8f9fa] dark:bg-slate-800/60 rounded-2xl p-3">
-                            <img
-                                src={selectedBookingCar.image}
-                                alt={selectedBookingCar.name}
-                                className="max-h-full max-w-full object-contain filter drop-shadow-xl"
-                            />
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {lowStockItems.map((item) => (
+                                <div
+                                    key={item.sku}
+                                    className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950 transition hover:border-slate-300"
+                                >
+                                    <div>
+                                        <p className="font-bold text-xs text-slate-900 dark:text-white">{item.part_name}</p>
+                                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">SKU: {item.sku}</p>
+                                        <div className="mt-2 flex items-center gap-2 text-xs">
+                                            <span className="font-bold text-rose-500">{item.available} units</span>
+                                            <span className="text-slate-400">· Min: {item.minimum}</span>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href="/admin/warehouse"
+                                        className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-300 transition"
+                                    >
+                                        Restock
+                                    </Link>
+                                </div>
+                            ))}
                         </div>
-
-                        <div className="rounded-2xl bg-gray-50 dark:bg-slate-800/80 p-4 space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
-                            <div className="flex justify-between">
-                                <span className="text-gray-400 dark:text-slate-400">Daily Rental:</span>
-                                <span className="font-bold text-slate-900 dark:text-white">${selectedBookingCar.pricePerDay}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400 dark:text-slate-400">Pick-up Date:</span>
-                                <span className="font-semibold">{pickupDate} ({pickupTime})</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400 dark:text-slate-400">Transmission &amp; Range:</span>
-                                <span className="font-semibold">{selectedBookingCar.transmission} • {selectedBookingCar.range}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-2">
-                            <button
-                                type="button"
-                                onClick={() => setSelectedBookingCar(null)}
-                                className="flex-1 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3.5 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-gray-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    alert(`Reservation confirmed for ${selectedBookingCar.name}!`);
-                                    setSelectedBookingCar(null);
-                                }}
-                                className="flex-1 rounded-2xl bg-[#ffa31a] py-3.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-amber-500/25 hover:bg-[#ff9400]"
-                            >
-                                Confirm Booking
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    </section>
+                )}
+            </div>
         </AdminLayout>
     );
 }

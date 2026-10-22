@@ -25,7 +25,7 @@ class WarehouseController extends Controller
             ]);
 
         $inventory = Inventory::query()
-            ->with(['warehouse:id,name,code', 'part:id,name,sku,unit'])
+            ->with(['warehouse:id,name,code', 'part:id,name,sku,unit,category'])
             ->orderBy('warehouse_id')
             ->get()
             ->map(fn (Inventory $item) => [
@@ -33,6 +33,7 @@ class WarehouseController extends Controller
                 'warehouse' => $item->warehouse->name,
                 'part_name' => $item->part->name,
                 'sku' => $item->part->sku,
+                'category' => $item->part->category,
                 'unit' => $item->part->unit,
                 'quantity' => (float) $item->quantity,
                 'reserved_quantity' => (float) $item->reserved_quantity,
@@ -57,7 +58,7 @@ class WarehouseController extends Controller
                 'created_at' => $transaction->created_at->format('d M Y, h:i A'),
             ]);
 
-        return Inertia::render('public/warehouse', [
+        return Inertia::render('admin/warehouse', [
             'warehouses' => $warehouses,
             'inventory' => $inventory,
             'recentTransactions' => $recentTransactions,

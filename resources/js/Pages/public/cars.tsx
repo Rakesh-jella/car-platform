@@ -1,149 +1,180 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import PublicLayout from '@/Layouts/PublicLayout';
+import AdminLayout from '@/Layouts/AdminLayout';
+import type { PageProps } from '@/types';
 
 type Vehicle = {
+    id: number;
     reference: string;
     brand: string;
     model: string;
     variant: string | null;
     year: number | null;
-    source: string;
-    status: string;
+    listing_type: 'sale' | 'rental';
     fuel_type: string | null;
     transmission: string | null;
     color: string | null;
-    selling_price: number;
+    image_url?: string | null;
+    price: number;
     warehouse: string | null;
 };
 
 type CarsPageProps = {
     vehicles: Vehicle[];
+    listingType: 'sale' | 'rental';
 };
 
-function formatStatus(status: string) {
-    return status.replaceAll('_', ' ');
-}
+const currency = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+});
 
-function formatSource(source: string) {
-    return source === 'manufactured' ? 'Locally Manufactured' : 'Imported';
-}
+export default function Cars({ vehicles, listingType }: CarsPageProps) {
+    const { auth } = usePage<PageProps>().props;
+    const { url } = usePage();
+    const isAdminView = Boolean(auth.user?.is_admin || url.startsWith('/admin'));
 
-export default function Cars({ vehicles }: CarsPageProps) {
-    return (
-        <>
-            <Head title="Motive - Vehicle Showroom & Fleet" />
+    const isRental = listingType === 'rental';
+    const [rentalDays, setRentalDays] = useState(1);
+    const [orderError, setOrderError] = useState('');
 
-            <main className="min-h-screen bg-slate-950 text-white font-sans antialiased selection:bg-[#ffa31a] selection:text-white">
-                {/* Expansive Header */}
-                <header className="mx-auto flex max-w-[1720px] items-center justify-between px-8 sm:px-12 py-8 border-b border-slate-800/80">
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#ff9400] to-[#ffa826] font-black text-2xl text-white shadow-lg shadow-amber-500/25">
-                            M
-                        </div>
-                        <span className="text-2xl font-black tracking-tight text-white">
-                            MOTIVE <span className="text-[#ffa31a] text-xs font-bold uppercase tracking-widest ml-1 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">Showroom</span>
-                        </span>
-                    </Link>
+    const buyUrl = url.startsWith('/admin') ? '/admin/cars?type=sale' : '/cars?type=sale';
+    const rentUrl = url.startsWith('/admin') ? '/admin/cars?type=rental' : '/cars?type=rental';
 
-                    <div className="flex items-center gap-6">
-                        <Link href="/" className="text-sm font-semibold text-slate-300 hover:text-amber-400 transition">
-                            ← Return to Home
-                        </Link>
-                        <Link
-                            href="/admin"
-                            className="rounded-2xl bg-[#ffa31a] px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-950 shadow-md shadow-amber-500/20 hover:bg-[#ff9400] transition"
-                        >
-                            Admin ERP Dashboard
-                        </Link>
-                    </div>
-                </header>
+    const orderVehicle = (vehicle: Vehicle) => {
+        if (!auth.user) {
+            router.visit('/login');
+            return;
+        }
 
-                <section className="mx-auto max-w-[1720px] px-8 sm:px-12 py-16">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-800">
-                        <div>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#ffa31a]">
-                                Active Fleet Portfolio
-                            </span>
-                            <h1 className="mt-4 text-4xl sm:text-6xl font-black tracking-tight">
-                                Track Every Vehicle.
-                            </h1>
-                            <p className="mt-3 max-w-3xl text-base sm:text-lg text-slate-300 font-normal">
-                                Browse imported and locally assembled vehicles with live status, specs, facility allocation, and direct retail booking.
-                            </p>
-                        </div>
+        router.post('/store/orders', {
+            product_type: 'vehicle',
+            product_id: vehicle.id,
+            order_type: isRental ? 'rental_booking' : 'booking',
+            rental_days: rentalDays,
+        }, {
+            preserveScroll: true,
+            onError: (errors) => setOrderError(errors.product_id ?? errors.rental_days ?? 'Unable to place your order. Please try again.'),
+        });
+    };
 
-                        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4">
-                            <span className="text-xs uppercase font-bold text-slate-400">Total Catalogued</span>
-                            <p className="text-3xl font-black text-[#ffa31a] mt-1">{vehicles.length} Units</p>
-                        </div>
-                    </div>
+    const content = (
+        <section className={isAdminView ? 'space-y-6' : 'mx-auto max-w-7xl px-6 py-14'}>
+            {!isAdminView && (
+                <p className="text-sm font-bold uppercase tracking-[0.22em] text-amber-400">Motive showroom</p>
+            )}
 
-                    <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {vehicles.map((vehicle) => (
-                            <article
-                                key={vehicle.reference}
-                                className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-xl hover:border-amber-400/60 transition duration-300 flex flex-col justify-between"
+            <div className="mt-3 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+                <div>
+                    <h1 className={isAdminView ? 'text-2xl font-bold text-slate-900 dark:text-white' : 'text-4xl font-black sm:text-5xl text-white'}>
+                        {isRental ? 'Cars for rent' : 'Cars for sale'}
+                    </h1>
+                    <p className={isAdminView ? 'mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-2xl' : 'mt-3 max-w-2xl text-slate-300'}>
+                        {isRental
+                            ? 'Choose your ride and send a rental request. Rental requests are confirmed by our team.'
+                            : 'Browse available cars. Reserve a car with a ₹50,000 advance and follow your order in My orders.'}
+                    </p>
+                </div>
+
+                {orderError && <p role="alert" className="mt-6 rounded-xl border border-red-800 bg-red-950 p-4 text-sm text-red-200">{orderError}</p>}
+
+                <div className="flex flex-wrap items-center gap-4">
+                    {isRental && (
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Duration:
+                            <select
+                                value={rentalDays}
+                                onChange={(event) => setRentalDays(Number(event.target.value))}
+                                className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                             >
-                                <div className="relative flex h-52 items-end bg-gradient-to-br from-slate-800 via-slate-850 to-slate-950 p-6 overflow-hidden">
-                                    <div className="absolute top-4 left-4 z-10">
-                                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                                            vehicle.source === 'manufactured'
-                                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                                : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                                        }`}>
-                                            {formatSource(vehicle.source)}
-                                        </span>
-                                    </div>
-                                    <p className="font-mono text-xs font-bold text-amber-400 tracking-wider">
-                                        {vehicle.reference}
-                                    </p>
-                                </div>
+                                {Array.from({ length: 30 }, (_, index) => index + 1).map((days) => (
+                                    <option key={days} value={days}>{days} day{days > 1 ? 's' : ''}</option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
 
-                                <div className="p-7 flex-1 flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <h2 className="text-2xl font-black tracking-tight text-white group-hover:text-amber-400 transition">
-                                                    {vehicle.brand} {vehicle.model}
-                                                </h2>
-                                                <p className="mt-1 text-xs font-semibold text-slate-400">
-                                                    {[vehicle.variant, vehicle.year].filter(Boolean).join(' · ')}
-                                                </p>
-                                            </div>
-
-                                            <span className="shrink-0 rounded-full bg-amber-400/10 border border-amber-400/30 px-3 py-1 text-xs font-bold capitalize text-amber-300">
-                                                {formatStatus(vehicle.status)}
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-slate-300 bg-slate-950/60 rounded-2xl p-4 border border-slate-800/80">
-                                            <p><span className="text-slate-500 font-medium">Fuel:</span> {vehicle.fuel_type ?? '—'}</p>
-                                            <p><span className="text-slate-500 font-medium">Gear:</span> {vehicle.transmission ?? '—'}</p>
-                                            <p><span className="text-slate-500 font-medium">Color:</span> {vehicle.color ?? '—'}</p>
-                                            <p><span className="text-slate-500 font-medium">Loc:</span> {vehicle.warehouse ?? 'In transit'}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 pt-5 border-t border-slate-800 flex items-center justify-between">
-                                        <div>
-                                            <span className="text-[11px] text-slate-400 font-medium block">Valuation</span>
-                                            <span className="text-2xl font-black text-emerald-400">
-                                                ${vehicle.selling_price.toLocaleString()}
-                                            </span>
-                                        </div>
-
-                                        <Link
-                                            href={`/cars/${vehicle.reference}`}
-                                            className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition hover:border-[#ffa31a] hover:text-[#ffa31a]"
-                                        >
-                                            Inspect →
-                                        </Link>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
+                    <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900 shadow-inner">
+                        <Link href={buyUrl} className={`rounded-lg px-4 py-1.5 text-xs font-bold transition ${!isRental ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                            Buy
+                        </Link>
+                        <Link href={rentUrl} className={`rounded-lg px-4 py-1.5 text-xs font-bold transition ${isRental ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                            Rent
+                        </Link>
                     </div>
-                </section>
-            </main>
-        </>
+                </div>
+            </div>
+
+            {vehicles.length === 0 ? (
+                <div className="mt-12 rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">No {isRental ? 'rental cars' : 'cars for sale'} available right now</h2>
+                    <p className="mt-2 text-xs text-slate-400">Please check back soon for new arrivals.</p>
+                </div>
+            ) : (
+                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {vehicles.map((vehicle) => (
+                        <article key={vehicle.reference} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md dark:border-slate-800 dark:bg-slate-900 transition">
+                            {vehicle.image_url ? (
+                                <img src={vehicle.image_url} alt={`${vehicle.brand} ${vehicle.model}`} className="h-48 w-full object-cover" />
+                            ) : (
+                                <div className="flex h-48 items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-950">
+                                    <span className="text-5xl" aria-hidden="true">🚘</span>
+                                </div>
+                            )}
+                            <div className="p-6">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-500">{vehicle.reference}</p>
+                                <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">{vehicle.brand} {vehicle.model}</h2>
+                                <p className="mt-1 text-xs text-slate-400">{[vehicle.variant, vehicle.year].filter(Boolean).join(' · ')}</p>
+                                <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300">
+                                    <span>⛽ {vehicle.fuel_type ?? '—'}</span>
+                                    <span>⚙️ {vehicle.transmission ?? '—'}</span>
+                                    <span>🎨 {vehicle.color ?? '—'}</span>
+                                    <span>📍 {vehicle.warehouse ?? 'Available'}</span>
+                                </div>
+                                <div className="mt-6 flex items-end justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+                                    <div>
+                                        <p className="text-[11px] text-slate-400">{isRental ? 'Per day' : 'Price'}</p>
+                                        <p className="text-xl font-black text-amber-500">
+                                            {currency.format(vehicle.price)}{isRental ? <span className="text-xs font-normal text-slate-400"> / day</span> : null}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <Link href={`/cars/${vehicle.reference}`} className="text-xs font-semibold text-slate-500 hover:text-amber-500 dark:text-slate-400">Details →</Link>
+                                        <button
+                                            type="button"
+                                            onClick={() => orderVehicle(vehicle)}
+                                            className="rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300 transition shadow-sm"
+                                        >
+                                            {isRental ? 'Request rental' : auth.user ? 'Reserve · ₹50,000' : 'Sign in to reserve'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+
+    return isAdminView ? (
+        <AdminLayout
+            title={isRental ? 'Showroom: Cars for Rent' : 'Showroom: Cars for Sale'}
+            subtitle={
+                isRental
+                    ? 'Rental booking fleet with daily pricing and availability.'
+                    : 'Showroom vehicle inventory ready for purchase or advance reservation.'
+            }
+        >
+            <Head title={isRental ? 'Cars for Rent' : 'Cars for Sale'} />
+            {content}
+        </AdminLayout>
+    ) : (
+        <PublicLayout>
+            <Head title={isRental ? 'Cars for rent' : 'Cars for sale'} />
+            {content}
+        </PublicLayout>
     );
 }

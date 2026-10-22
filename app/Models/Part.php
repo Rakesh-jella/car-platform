@@ -11,7 +11,19 @@ class Part extends Model
         'sku',
         'stock_quantity',
         'unit',
+        'category',
+        'description',
+        'selling_price',
+        'image_url',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'stock_quantity' => 'decimal:2',
+            'selling_price' => 'decimal:2',
+        ];
+    }
 
     public function bomItems()
     {

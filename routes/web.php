@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\ExportOrderController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\Admin\InventoryController;
 
 Route::get('/', function () {
     return Inertia::render('home');
@@ -20,15 +22,42 @@ Route::get('/cars', [VehicleController::class, 'index'])->name('cars');
 Route::get('/cars/{vehicle:reference}', [VehicleController::class, 'show'])
     ->name('cars.show');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/admin', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/admin/customers', [CustomerController::class, 'index'])
-    ->name('admin.customers.index');
+Route::get('/parts', [StoreController::class, 'parts'])->name('store.parts');
+Route::middleware('auth')->group(function () {
+    Route::get('/my-orders', [StoreController::class, 'orders'])->name('store.orders');
+    Route::post('/store/orders', [StoreController::class, 'storeOrder'])->name('store.orders.store');
+});
 
-Route::post('/admin/customers', [CustomerController::class, 'store'])
-    ->name('admin.customers.store');
+Route::middleware('admin')->prefix('admin')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/customers', [CustomerController::class, 'index'])
+        ->name('admin.customers.index');
 
+    Route::post('/customers', [CustomerController::class, 'store'])
+        ->name('admin.customers.store');
 
+    Route::get('/export-orders', [ExportOrderController::class, 'index'])
+        ->name('admin.export-orders.index');
+    Route::post('/export-orders', [ExportOrderController::class, 'store'])
+        ->name('admin.export-orders.store');
+    Route::patch('/export-orders/{exportOrder}/status', [ExportOrderController::class, 'updateStatus'])
+        ->name('admin.export-orders.status');
+
+    Route::get('/warehouse', [\App\Http\Controllers\WarehouseController::class, 'index'])
+        ->name('admin.warehouse');
+    Route::post('/warehouse/{inventory}/receive', [InventoryController::class, 'receive'])
+        ->name('admin.warehouse.receive');
+    Route::patch('/inventory-alerts/{alert}/acknowledge', [InventoryController::class, 'acknowledge'])
+        ->name('admin.inventory-alerts.acknowledge');
+    Route::get('/manufacturing', [ManufacturingController::class, 'index'])
+        ->name('admin.manufacturing');
+    Route::get('/cars', [VehicleController::class, 'index'])
+        ->name('admin.cars');
+    Route::get('/parts', [StoreController::class, 'parts'])
+        ->name('admin.parts');
+});
+
+Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -45,25 +74,11 @@ Route::get('/export', function () {
     ]);
 })->name('export');
 
-Route::get('/manufacturing', [ManufacturingController::class, 'index'])->name('manufacturing');
-Route::get('/warehouse', [WarehouseController::class, 'index'])->name('warehouse');
-
 Route::get('/contact', function () {
     return Inertia::render('public/page', [
         'title' => 'Contact Us',
         'description' => 'Speak with our sales team about vehicles, imports, exports, manufacturing, or partnerships.',
     ]);
 })->name('contact');
-
-Route::get('/admin/export-orders', [ExportOrderController::class, 'index'])
-    ->name('admin.export-orders.index');
-
-Route::post('/admin/export-orders', [ExportOrderController::class, 'store'])
-    ->name('admin.export-orders.store');
-
-Route::patch('/admin/export-orders/{exportOrder}/status', [ExportOrderController::class, 'updateStatus'])
-    ->name('admin.export-orders.status');
-
-
 
 require __DIR__.'/auth.php';

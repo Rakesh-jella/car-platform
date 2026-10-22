@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,12 +25,38 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
+    public function createAdmin(): Response
+    {
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => false,
+            'status' => session('status'),
+            'adminLogin' => true,
+        ]);
+    }
+
     /**
      * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('home', absolute: false));
+    }
+
+    public function storeAdmin(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        if (! $request->user()?->is_admin) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'These credentials do not have access to the warehouse portal.',
+            ]);
+        }
 
         $request->session()->regenerate();
 

@@ -1,141 +1,89 @@
 import { Head, Link } from '@inertiajs/react';
+import PublicLayout from '@/Layouts/PublicLayout';
 
-const navigation = [
-    { label: 'Showroom Fleet', href: '/cars' },
-    { label: 'Import Vehicle', href: '/import' },
-    { label: 'Export Operations', href: '/export' },
-    { label: 'Manufacturing', href: '/manufacturing' },
-    { label: 'Warehouse & Stock', href: '/warehouse' },
-    { label: 'Contact', href: '/contact' },
-];
-
-const services = [
+const categories = [
     {
-        title: 'Vehicle Import Services',
-        text: 'Source luxury and specialty vehicles globally with complete end-to-end logistics, shipping, port inspection, customs clearance, and verified delivery.',
-        icon: '🚢',
+        eyebrow: 'Drive your next car',
+        title: 'Cars for sale',
+        description: 'Browse available new, imported, and locally prepared cars. Reserve your choice with a ₹50,000 advance.',
+        href: '/cars?type=sale',
+        action: 'Shop cars',
+        image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=85',
     },
     {
-        title: 'Worldwide Vehicle Export',
-        text: 'Export certified vehicles with international regulatory documentation, freight tracking, transparent agreed valuation, and multi-port delivery.',
-        icon: '🌐',
+        eyebrow: 'Flexible journeys',
+        title: 'Cars for rent',
+        description: 'Find a car for the days you need it. Send a rental booking request directly from the vehicle listing.',
+        href: '/cars?type=rental',
+        action: 'Browse rentals',
+        image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1400&q=85',
     },
     {
-        title: 'Assembly & Manufacturing',
-        text: 'Manage state-of-the-art vehicle assembly pipelines, parts inventory, quality control benchmarks, and direct showroom readiness.',
-        icon: '🏭',
+        eyebrow: 'Parts, styling & performance',
+        title: 'Parts and gear',
+        description: 'Shop replacement parts, styling upgrades, sports equipment, and racing accessories in one place.',
+        href: '/parts',
+        action: 'Shop parts & gear',
+        image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1400&q=85',
     },
 ];
 
 export default function Home() {
     return (
-        <>
-            <Head title="Motive - Next-Gen Automotive Platform" />
+        <PublicLayout>
+            <Head title="Motive — Cars, parts and gear" />
 
-            <main className="min-h-screen bg-slate-950 text-white font-sans antialiased selection:bg-[#ffa31a] selection:text-white">
-                {/* Expansive Full-Width Header */}
-                <header className="mx-auto flex max-w-[1720px] items-center justify-between px-8 sm:px-12 py-8">
-                    <Link href="/" className="flex items-center gap-3 group">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#ff9400] to-[#ffa826] font-black text-2xl text-white shadow-lg shadow-amber-500/25">
-                            M
-                        </div>
-                        <span className="text-2xl font-black tracking-tight text-white group-hover:text-amber-400 transition">
-                            MOTIVE <span className="text-[#ffa31a] text-xs font-bold uppercase tracking-widest ml-1 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">Platform</span>
-                        </span>
-                    </Link>
-
-                    <nav className="hidden gap-8 text-sm font-semibold text-slate-300 lg:flex items-center">
-                        {navigation.map((item) => (
-                            <Link key={item.label} href={item.href} className="transition hover:text-amber-400">
-                                {item.label}
-                            </Link>
-                        ))}
-                    </nav>
-
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/admin"
-                            className="rounded-2xl bg-gradient-to-r from-[#ffa31a] to-amber-500 px-6 py-3 text-xs sm:text-sm font-extrabold text-slate-950 shadow-md shadow-amber-500/20 hover:shadow-xl hover:scale-105 transition"
-                        >
-                            Enter Admin ERP →
+            <section className="mx-auto grid max-w-7xl gap-12 px-6 py-16 md:grid-cols-2 md:items-center md:py-24">
+                <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.24em] text-amber-400">
+                        Your automotive marketplace
+                    </p>
+                    <h1 className="mt-5 text-5xl font-black leading-tight tracking-tight sm:text-7xl">
+                        Find your next <span className="text-amber-400">drive.</span>
+                    </h1>
+                    <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+                        Shop cars to buy or rent, and find the parts and performance gear to make every drive yours.
+                    </p>
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        <Link href="/cars" className="rounded-xl bg-amber-400 px-6 py-3 font-bold text-slate-950 transition hover:bg-amber-300">
+                            Browse cars
+                        </Link>
+                        <Link href="/parts" className="rounded-xl border border-slate-700 px-6 py-3 font-bold text-white transition hover:border-amber-400">
+                            Parts & gear
                         </Link>
                     </div>
-                </header>
+                </div>
+                <img
+                    src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=85"
+                    alt="Sports car on a mountain road"
+                    className="h-[360px] w-full rounded-3xl object-cover md:h-[480px]"
+                />
+            </section>
 
-                {/* Big Hero Section */}
-                <section className="mx-auto grid max-w-[1720px] gap-14 px-8 sm:px-12 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
-                    <div className="space-y-8">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.25em] text-[#ffa31a]">
-                            <span className="h-2 w-2 rounded-full bg-[#ffa31a] animate-pulse"></span>
-                            All-In-One Automotive Ecosystem
-                        </div>
-
-                        <h1 className="text-6xl font-black leading-none tracking-tight sm:text-7xl xl:text-8xl">
-                            Move mobility
-                            <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffa31a] via-amber-300 to-amber-500">
-                                forward.
-                            </span>
-                        </h1>
-
-                        <p className="max-w-2xl text-lg sm:text-xl leading-relaxed text-slate-300 font-normal">
-                            A high-performance automotive enterprise platform designed for international vehicle importing, global export routing, local assembly manufacturing, and live showroom dealership management.
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-5 pt-2">
-                            <Link
-                                href="/cars"
-                                className="rounded-2xl bg-[#ffa31a] hover:bg-[#ff9400] px-8 py-4 text-sm sm:text-base font-black text-slate-950 shadow-lg shadow-amber-500/30 transition hover:scale-105"
-                            >
-                                Explore Showroom Fleet
-                            </Link>
-
-                            <Link
-                                href="/admin"
-                                className="rounded-2xl border-2 border-slate-700 bg-slate-900/60 px-8 py-4 text-sm sm:text-base font-bold text-white transition hover:border-[#ffa31a] hover:text-[#ffa31a]"
-                            >
-                                Open Motive Dashboard
-                            </Link>
-                        </div>
+            <section className="mx-auto max-w-7xl px-6 pb-20">
+                <div className="mb-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                    <div>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber-400">Shop by category</p>
+                        <h2 className="mt-2 text-3xl font-black sm:text-4xl">Everything for the road</h2>
                     </div>
-
-                    <div className="relative">
-                        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-600 opacity-20 blur-xl"></div>
-                        <img
-                            src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=85"
-                            alt="Premium luxury automobile"
-                            className="relative h-[480px] lg:h-[580px] w-full rounded-3xl object-cover shadow-2xl border border-slate-800"
-                        />
-                    </div>
-                </section>
-
-                {/* Services Section */}
-                <section className="bg-slate-900/90 border-t border-slate-800/80 px-8 sm:px-12 py-24">
-                    <div className="mx-auto max-w-[1720px]">
-                        <div className="max-w-2xl">
-                            <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#ffa31a]">
-                                End-to-End Enterprise Logistics
-                            </p>
-                            <h2 className="mt-3 text-4xl sm:text-5xl font-black text-white tracking-tight">
-                                Integrated platform for the complete vehicle lifecycle.
-                            </h2>
-                        </div>
-
-                        <div className="mt-14 grid gap-8 md:grid-cols-3">
-                            {services.map((service) => (
-                                <article
-                                    key={service.title}
-                                    className="rounded-3xl border border-slate-800 bg-slate-950/70 p-8 lg:p-10 shadow-lg hover:border-amber-500/50 transition duration-200"
-                                >
-                                    <span className="text-4xl mb-6 block">{service.icon}</span>
-                                    <h3 className="text-2xl font-black text-white">{service.title}</h3>
-                                    <p className="mt-4 leading-relaxed text-slate-300 text-sm sm:text-base">{service.text}</p>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            </main>
-        </>
+                    <p className="text-sm text-slate-400">Customer shopping only. Warehouse operations are handled separately.</p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-3">
+                    {categories.map((category) => (
+                        <article key={category.title} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                            <img src={category.image} alt="" className="h-48 w-full object-cover" />
+                            <div className="p-6">
+                                <p className="text-xs font-bold uppercase tracking-wider text-amber-400">{category.eyebrow}</p>
+                                <h3 className="mt-2 text-2xl font-black">{category.title}</h3>
+                                <p className="mt-3 min-h-20 leading-6 text-slate-300">{category.description}</p>
+                                <Link href={category.href} className="mt-5 inline-flex font-bold text-amber-400 hover:text-amber-300">
+                                    {category.action} <span className="ml-2" aria-hidden="true">→</span>
+                                </Link>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
+        </PublicLayout>
     );
 }

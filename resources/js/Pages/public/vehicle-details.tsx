@@ -1,160 +1,158 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import PublicLayout from '@/Layouts/PublicLayout';
+import AdminLayout from '@/Layouts/AdminLayout';
+import type { PageProps } from '@/types';
 
 type Vehicle = {
+    id: number;
     reference: string;
-    vin: string | null;
     brand: string;
     model: string;
     variant: string | null;
     year: number | null;
-    source: string;
-    status: string;
+    listing_type: 'sale' | 'rental';
     fuel_type: string | null;
     transmission: string | null;
     color: string | null;
+    image_url?: string | null;
     mileage: number | null;
-    purchase_cost: number;
-    import_cost: number;
-    production_cost: number;
-    total_cost: number;
     selling_price: number;
-    purchased_at: string | null;
-    arrived_at: string | null;
-    ready_for_sale_at: string | null;
-    notes: string | null;
+    rental_price_per_day: number;
     warehouse: {
         name: string;
-        code: string;
         city: string | null;
         country: string | null;
     } | null;
     vehicle_model: {
         name: string;
-        code: string;
     } | null;
 };
 
-type VehicleDetailsProps = {
-    vehicle: Vehicle;
-};
+const currency = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+});
 
-function label(value: string) {
-    return value.replaceAll('_', ' ');
-}
+export default function VehicleDetails({ vehicle }: { vehicle: Vehicle }) {
+    const { auth } = usePage<PageProps>().props;
+    const { url } = usePage();
+    const isAdminView = Boolean(auth.user?.is_admin || url.startsWith('/admin'));
 
-export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
+    const isRental = vehicle.listing_type === 'rental';
+    const price = isRental ? vehicle.rental_price_per_day : vehicle.selling_price;
+
+    const backUrl = url.startsWith('/admin')
+        ? `/admin/cars?type=${vehicle.listing_type}`
+        : `/cars?type=${vehicle.listing_type}`;
+
+    const orderVehicle = () => {
+        if (!auth.user) {
+            router.visit('/login');
+            return;
+        }
+
+        router.post('/store/orders', {
+            product_type: 'vehicle',
+            product_id: vehicle.id,
+            order_type: isRental ? 'rental_booking' : 'booking',
+            rental_days: 1,
+        });
+    };
+
     const details = [
-        ['Vehicle ID', vehicle.reference],
-        ['VIN', vehicle.vin ?? 'Not assigned'],
-        ['Source', label(vehicle.source)],
-        ['Status', label(vehicle.status)],
-        ['Fuel Type', vehicle.fuel_type ?? '—'],
+        ['Model', vehicle.vehicle_model?.name ?? vehicle.model],
+        ['Fuel', vehicle.fuel_type ?? '—'],
         ['Transmission', vehicle.transmission ?? '—'],
-        ['Colour', vehicle.color ?? '—'],
+        ['Color', vehicle.color ?? '—'],
         ['Mileage', vehicle.mileage !== null ? `${vehicle.mileage.toLocaleString()} km` : '—'],
-        ['Warehouse', vehicle.warehouse?.name ?? 'In transit / not assigned'],
-        ['Purchase Date', vehicle.purchased_at ?? '—'],
-        ['Arrival Date', vehicle.arrived_at ?? '—'],
-        ['Ready for Sale', vehicle.ready_for_sale_at ?? '—'],
+        ['Location', [vehicle.warehouse?.city, vehicle.warehouse?.country].filter(Boolean).join(', ') || 'Contact us'],
     ];
 
-    return (
-        <>
-            <Head title={`${vehicle.brand} ${vehicle.model}`} />
+    const content = (
+        <section className={isAdminView ? 'space-y-6 max-w-6xl' : 'mx-auto max-w-6xl px-6 py-14'}>
+            <Link href={backUrl} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-500 dark:text-slate-400 transition">
+                <span>←</span>
+                <span>Back to {isRental ? 'rentals' : 'cars for sale'}</span>
+            </Link>
 
-            <main className="min-h-screen bg-slate-950 text-white">
-                <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-                    <Link href="/" className="text-xl font-bold tracking-wide">
-                        CAR<span className="text-amber-400">PLATFORM</span>
-                    </Link>
-
-                    <Link href="/cars" className="text-sm text-slate-300 hover:text-amber-400">
-                        ← All Vehicles
-                    </Link>
-                </header>
-
-                <section className="mx-auto max-w-7xl px-6 py-16">
-                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-400">
-                        {vehicle.reference}
-                    </p>
-
-                    <div className="mt-4 flex flex-col justify-between gap-8 md:flex-row md:items-end">
-                        <div>
-                            <h1 className="text-4xl font-bold md:text-6xl">
-                                {vehicle.brand} {vehicle.model}
-                            </h1>
-                            <p className="mt-3 text-xl text-slate-300">
-                                {[vehicle.variant, vehicle.year].filter(Boolean).join(' · ')}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p className="text-sm text-slate-400">Selling price</p>
-                            <p className="text-4xl font-bold text-amber-400">
-                                ${vehicle.selling_price.toLocaleString()}
-                            </p>
-                        </div>
+            <div className="mt-4 grid gap-8 lg:grid-cols-2">
+                {vehicle.image_url ? (
+                    <img
+                        src={vehicle.image_url}
+                        alt={`${vehicle.brand} ${vehicle.model}`}
+                        className="h-96 w-full rounded-2xl object-cover shadow-lg border border-slate-200 dark:border-slate-800"
+                    />
+                ) : (
+                    <div className="flex h-96 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-950 border border-slate-200 dark:border-slate-800">
+                        <span className="text-7xl" aria-hidden="true">🚘</span>
                     </div>
+                )}
 
-                    <div className="mt-12 grid gap-8 lg:grid-cols-3">
-                        <div className="lg:col-span-2">
-                            <div className="rounded-xl border border-slate-700 bg-slate-900 p-7">
-                                <h2 className="text-2xl font-bold">Vehicle tracking</h2>
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-amber-500">
+                                {vehicle.reference}
+                            </span>
+                            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
+                                {isRental ? 'For rent' : 'For sale'}
+                            </span>
+                        </div>
 
-                                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                                    {details.map(([name, value]) => (
-                                        <div key={name} className="rounded-lg bg-slate-800 p-4">
-                                            <p className="text-sm text-slate-400">{name}</p>
-                                            <p className="mt-1 capitalize text-white">{value}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                        <h1 className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+                            {vehicle.brand} {vehicle.model}
+                        </h1>
+                        <p className="mt-1 text-xs text-slate-400">
+                            {[vehicle.variant, vehicle.year].filter(Boolean).join(' · ')}
+                        </p>
 
-                            <div className="mt-8 rounded-xl border border-slate-700 bg-slate-900 p-7">
-                                <h2 className="text-2xl font-bold">Lifecycle status</h2>
-                                <div className="mt-5 flex items-center gap-3">
-                                    <span className="h-3 w-3 rounded-full bg-amber-400" />
-                                    <p className="capitalize text-lg">{label(vehicle.status)}</p>
-                                </div>
-                                <p className="mt-4 leading-7 text-slate-300">
-                                    {vehicle.notes ?? 'No additional tracking notes are available.'}
+                        <div className="mt-6">
+                            <p className="text-3xl font-black text-amber-500">
+                                {currency.format(price)}
+                                {isRental ? <span className="text-sm font-normal text-slate-400"> / day</span> : null}
+                            </p>
+                            {!isRental && (
+                                <p className="mt-1 text-xs text-slate-400">
+                                    Reserve today with a ₹50,000 advance deposit.
                                 </p>
-                            </div>
+                            )}
                         </div>
 
-                        <aside className="rounded-xl border border-slate-700 bg-slate-900 p-7">
-                            <h2 className="text-xl font-bold">Cost summary</h2>
-
-                            <div className="mt-6 space-y-4 text-slate-300">
-                                <div className="flex justify-between gap-4">
-                                    <span>Purchase cost</span>
-                                    <span>${vehicle.purchase_cost.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                    <span>Import cost</span>
-                                    <span>${vehicle.import_cost.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between gap-4">
-                                    <span>Production cost</span>
-                                    <span>${vehicle.production_cost.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between gap-4 border-t border-slate-700 pt-4 font-bold text-white">
-                                    <span>Total cost</span>
-                                    <span>${vehicle.total_cost.toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            <Link
-                                href="/contact"
-                                className="mt-8 block rounded-lg bg-amber-400 px-4 py-3 text-center font-semibold text-slate-950 transition hover:bg-amber-300"
-                            >
-                                Request a quotation
-                            </Link>
-                        </aside>
+                        <button
+                            type="button"
+                            onClick={orderVehicle}
+                            className="mt-6 w-full rounded-xl bg-amber-400 px-5 py-3 font-bold text-sm text-slate-950 hover:bg-amber-300 transition shadow-sm"
+                        >
+                            {isRental ? 'Request a rental booking' : 'Reserve this vehicle'}
+                        </button>
                     </div>
-                </section>
-            </main>
-        </>
+
+                    <div className="mt-8 grid grid-cols-2 gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        {details.map(([label, value]) => (
+                            <div key={label} className="rounded-xl bg-slate-50 dark:bg-slate-950/70 p-3 border border-slate-100 dark:border-slate-800/60">
+                                <p className="text-[10px] text-slate-400 uppercase font-semibold">{label}</p>
+                                <p className="mt-0.5 text-xs font-bold text-slate-800 dark:text-slate-200">{value}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+
+    return isAdminView ? (
+        <AdminLayout
+            title={`${vehicle.brand} ${vehicle.model}`}
+            subtitle={`Reference ${vehicle.reference} · ${vehicle.variant ?? ''}`}
+        >
+            <Head title={`${vehicle.brand} ${vehicle.model}`} />
+            {content}
+        </AdminLayout>
+    ) : (
+        <PublicLayout>
+            <Head title={`${vehicle.brand} ${vehicle.model}`} />
+            {content}
+        </PublicLayout>
     );
 }

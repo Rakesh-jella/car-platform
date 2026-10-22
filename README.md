@@ -57,3 +57,26 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Motive Market storefront and warehouse ERP
+
+- Customers use `/` to shop available cars for sale or rent, and parts, styling, sports, and racing products. Customer accounts are created at `/register`; orders and booking requests appear under **My orders**.
+- Vehicle reservations record a ₹50,000 advance due (capped at the vehicle's total price). Parts orders are recorded with payment pending. Rental requests include the selected number of rental days and await confirmation.
+- Staff use the separate `/admin/login` URL. All `/admin/*` pages require an authenticated administrator account; registering through the customer website does not grant admin access.
+- To create the initial administrator account, run this command on the server after migrations. It securely prompts for the account details and password; it does not place the password in shell history:
+
+  ```sh
+  php artisan app:create-admin-user
+  ```
+
+- The command creates only a new account and refuses to modify an account with an existing email. Use Laravel Tinker to explicitly grant admin access to an existing trusted account:
+
+  ```php
+  $user = App\Models\User::where('email', 'staff@example.com')->firstOrFail();
+  $user->is_admin = true;
+  $user->save();
+  ```
+
+- The warehouse screen records stock receipts and updates the matching storefront quantity. When a product category sells out, the ERP dashboard shows an alert for that category.
+
+The application records orders and the required advance amount, but does not yet collect money through a payment gateway. Connect a payment provider before treating an advance or purchase as paid.

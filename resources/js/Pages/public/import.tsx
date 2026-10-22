@@ -375,12 +375,6 @@ export default function ImportPage({ success }: ImportPageProps) {
                             <Link href="/" className="text-sm font-semibold text-gray-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
                                 ← Back to Home
                             </Link>
-                            <Link
-                                href="/admin"
-                                className="rounded-2xl bg-[#ffa31a] hover:bg-[#ff9400] px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-950 shadow-md shadow-amber-500/20 transition"
-                            >
-                                Admin Dashboard
-                            </Link>
                         </div>
                     </div>
                 </header>

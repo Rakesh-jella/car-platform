@@ -10,9 +10,11 @@ import { FormEventHandler } from 'react';
 export default function Login({
     status,
     canResetPassword,
+    adminLogin = false,
 }: {
     status?: string;
     canResetPassword: boolean;
+    adminLogin?: boolean;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
@@ -23,14 +25,23 @@ export default function Login({
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('login'), {
+        post(adminLogin ? route('admin.login.store') : route('login'), {
             onFinish: () => reset('password'),
         });
     };
 
     return (
         <GuestLayout>
-            <Head title="Log in" />
+            <Head title={adminLogin ? 'Warehouse ERP sign in' : 'Customer sign in'} />
+
+            <div className="mb-6">
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {adminLogin ? 'Warehouse ERP' : 'Welcome back'}
+                </h1>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    {adminLogin ? 'Sign in with an administrator account.' : 'Sign in to place and manage your orders.'}
+                </p>
+            </div>
 
             {status && (
                 <div className="mb-4 text-sm font-medium text-green-600">

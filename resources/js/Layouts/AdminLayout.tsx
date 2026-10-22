@@ -1,6 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { ReactNode, useState, useEffect } from 'react';
-import { PageProps } from '@/types';
+import type { PageProps } from '@/types';
 import { getInitialTheme, applyTheme, setupSystemThemeListener, ThemeMode } from '@/theme';
 
 type AdminLayoutProps = {
@@ -11,88 +11,124 @@ type AdminLayoutProps = {
     hideDefaultTitle?: boolean;
 };
 
-const navItems = [
+type NavIconName = 'dashboard' | 'warehouse' | 'export' | 'manufacturing' | 'customers' | 'cars' | 'parts';
+
+type NavItem = {
+    label: string;
+    href: string;
+    icon: NavIconName;
+    badge?: string | number;
+    badgeColor?: string;
+};
+
+type NavGroup = {
+    group: string;
+    items: NavItem[];
+};
+
+function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
+    const colorClass = active ? 'text-amber-500' : 'text-slate-400 group-hover:text-slate-200';
+    switch (name) {
+        case 'dashboard':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="2" />
+                    <rect x="14" y="3" width="7" height="7" rx="2" />
+                    <rect x="14" y="14" width="7" height="7" rx="2" />
+                    <rect x="3" y="14" width="7" height="7" rx="2" />
+                </svg>
+            );
+        case 'warehouse':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                    <path d="m3.3 7 8.7 5 8.7-5" />
+                    <path d="M12 22V12" />
+                </svg>
+            );
+        case 'export':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" x2="22" y1="10" y2="10" />
+                </svg>
+            );
+        case 'manufacturing':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4" />
+                    <path d="m4.93 4.93 2.83 2.83" />
+                    <path d="M2 12h4" />
+                    <path d="m4.93 19.07 2.83-2.83" />
+                    <path d="M12 22v-4" />
+                    <path d="m19.07 19.07-2.83-2.83" />
+                    <path d="M22 12h-4" />
+                    <path d="m19.07 4.93-2.83 2.83" />
+                    <circle cx="12" cy="12" r="3" />
+                </svg>
+            );
+        case 'customers':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+            );
+        case 'cars':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                    <circle cx="7" cy="17" r="2" />
+                    <circle cx="17" cy="17" r="2" />
+                </svg>
+            );
+        case 'parts':
+            return (
+                <svg className={`h-5 w-5 ${colorClass}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                    <path d="M3 6h18" />
+                    <path d="M16 10a4 4 0 0 1-8 0" />
+                </svg>
+            );
+    }
+}
+
+const navGroups: NavGroup[] = [
     {
-        label: 'Dashboard',
-        href: '/admin',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" />
-            </svg>
-        ),
+        group: 'Main Operations',
+        items: [
+            { label: 'Dashboard', href: '/admin', icon: 'dashboard' },
+            {
+                label: 'Warehouse & Stock',
+                href: '/admin/warehouse',
+                icon: 'warehouse',
+                badge: 'Live',
+                badgeColor: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+            },
+            { label: 'Export Orders', href: '/admin/export-orders', icon: 'export' },
+        ],
     },
     {
-        label: 'Export Orders',
-        href: '/admin/export-orders',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-            </svg>
-        ),
+        group: 'Production & Customers',
+        items: [
+            { label: 'Manufacturing (BOM)', href: '/admin/manufacturing', icon: 'manufacturing' },
+            { label: 'Customers', href: '/admin/customers', icon: 'customers' },
+        ],
     },
     {
-        label: 'Import Requests',
-        href: '/import',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-        ),
-    },
-    {
-        label: 'Vehicle Inventory',
-        href: '/cars',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-        ),
-    },
-    {
-        label: 'Warehouse & Stock',
-        href: '/warehouse',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M12 2a10 10 0 0 0-10 10c0 4.4 2.9 8.2 7 9.5v-2.2A8 8 0 0 1 4 12a8 8 0 0 1 16 0c0 3.3-2 6.2-5 7.3v2.2c4.1-1.3 7-5.1 7-9.5A10 10 0 0 0 12 2z" />
-                <path d="m14 10-3 3" />
-            </svg>
-        ),
-    },
-    {
-        label: 'Manufacturing',
-        href: '/manufacturing',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-            </svg>
-        ),
-    },
-    {
-        label: 'Customers CRM',
-        href: '/admin/customers',
-        icon: (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M3 3v18h18" />
-                <path d="m19 9-5 5-4-4-3 3" />
-            </svg>
-        ),
+        group: 'Storefront Links',
+        items: [
+            { label: 'Cars Showroom', href: '/cars', icon: 'cars' },
+            { label: 'Parts & Gear Shop', href: '/parts', icon: 'parts' },
+        ],
     },
 ];
 
 export default function AdminLayout({
     children,
-    title = 'Dashboard',
+    title = 'Warehouse ERP',
     subtitle,
     actions,
     hideDefaultTitle = false,
@@ -100,19 +136,16 @@ export default function AdminLayout({
     const { auth } = usePage<PageProps>().props;
     const { url } = usePage();
 
-    // Theme state: light | dark | system
     const [themeMode, setThemeMode] = useState<ThemeMode>('light');
-    const [selectedTab, setSelectedTab] = useState<'Rent' | 'Buy' | 'Sell'>('Rent');
     const [profileOpen, setProfileOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const initial = getInitialTheme();
         setThemeMode(initial);
         applyTheme(initial);
 
-        const cleanup = setupSystemThemeListener(() => {
-            // Re-render if needed
-        });
+        const cleanup = setupSystemThemeListener(() => {});
         return cleanup;
     }, []);
 
@@ -129,135 +162,225 @@ export default function AdminLayout({
         if (path === '/admin') {
             return url === '/admin' || url === '/admin/';
         }
+        if (path.includes('/cars')) {
+            return url.includes('/cars');
+        }
+        if (path.includes('/parts')) {
+            return url.includes('/parts');
+        }
         return url.startsWith(path);
     };
 
     return (
-        <div className="w-full min-h-screen bg-[#f4f5f8] dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-[#ffa31a] selection:text-white transition-colors duration-200 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-amber-400 selection:text-slate-950 transition-colors duration-200 flex flex-col md:flex-row">
             
-            {/* FULL-HEIGHT SLIM LEFT SIDEBAR */}
-            <aside className="w-full md:w-[84px] bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col items-center py-6 px-3 shrink-0 justify-between md:sticky md:top-0 md:h-screen z-30 transition-colors">
-                <div className="flex flex-col items-center w-full">
-                    {/* Motive Logo Squircle */}
-                    <Link
-                        href="/admin"
-                        className="group relative flex h-13 w-13 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#ff9400] to-[#ffa826] shadow-md shadow-amber-500/25 transition hover:scale-105"
-                        title="Motive Admin"
-                    >
-                        <span className="font-extrabold text-2xl text-white tracking-tighter">M</span>
-                    </Link>
+            {/* MOBILE HEADER BAR */}
+            <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
+                <Link href="/admin" className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center shadow-md shadow-amber-500/20">
+                        <span className="font-black text-lg text-slate-950">M</span>
+                    </div>
+                    <div>
+                        <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">MOTIVE</span>
+                        <span className="ml-1 text-[10px] font-black uppercase tracking-wider text-amber-500">ERP</span>
+                    </div>
+                </Link>
 
-                    {/* Section Label */}
-                    <p className="mt-7 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-                        Menu
-                    </p>
-
-                    {/* Navigation Stack */}
-                    <nav className="mt-3 flex md:flex-col items-center gap-2 w-full">
-                        {navItems.map((item) => {
-                            const active = isCurrent(item.href);
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={`flex h-11 w-11 items-center justify-center rounded-2xl transition duration-150 ${
-                                        active
-                                            ? 'bg-gray-100 dark:bg-slate-800 text-slate-950 dark:text-amber-400 shadow-sm'
-                                            : 'text-gray-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800/60'
-                                    }`}
-                                    title={item.label}
-                                >
-                                    {item.icon}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-                </div>
-
-                {/* Bottom Utility Icons */}
-                <div className="flex md:flex-col items-center gap-2 w-full pt-4">
+                <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-gray-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                        title="Search"
+                        onClick={() => handleThemeChange(themeMode === 'dark' ? 'light' : 'dark')}
+                        className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        aria-label="Toggle theme"
                     >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <circle cx="11" cy="11" r="7" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        {themeMode === 'dark' ? (
+                            <svg className="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="5" />
+                                <line x1="12" y1="1" x2="12" y2="3" />
+                                <line x1="12" y1="21" x2="12" y2="23" />
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                <line x1="1" y1="12" x2="3" y2="12" />
+                                <line x1="21" y1="12" x2="23" y2="12" />
+                            </svg>
+                        ) : (
+                            <svg className="h-5 w-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        aria-label="Open menu"
+                    >
+                        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            {mobileMenuOpen ? (
+                                <path d="M18 6 6 18M6 6l12 12" />
+                            ) : (
+                                <path d="M4 6h16M4 12h16M4 18h16" />
+                            )}
                         </svg>
                     </button>
-
-                    <Link
-                        href="/profile"
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-gray-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                        title="Profile & Settings"
-                    >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                        </svg>
-                    </Link>
-
-                    <Link
-                        href="/"
-                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-gray-400 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition"
-                        title="Website / Showroom"
-                    >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                            <line x1="12" y1="17" x2="12.01" y2="17" />
-                        </svg>
-                    </Link>
                 </div>
-            </aside>
+            </div>
 
-            {/* FULL-SCREEN MAIN CONTENT BODY */}
-            <div className="flex-1 flex flex-col min-w-0">
-                
-                {/* TOP HEADER BAR */}
-                <header className="flex items-center justify-between px-6 sm:px-10 lg:px-14 py-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-gray-200/80 dark:border-slate-800/80 sticky top-0 z-20 shrink-0 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <Link href="/admin">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                                Motive
-                            </h1>
+            {/* EXPANSIVE SIDEBAR (DESKTOP & MOBILE DRAWER) */}
+            <aside
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
+                    mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+                }`}
+            >
+                <div className="flex flex-col h-full overflow-y-auto">
+                    {/* Brand Header */}
+                    <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                        <Link href="/admin" className="flex items-center gap-3 group">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:scale-105 transition">
+                                <span className="font-black text-xl text-slate-950">M</span>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white">MOTIVE</span>
+                                    <span className="rounded-md bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-black text-amber-500 uppercase tracking-wider">ERP</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-medium">Warehouse & Logistics</p>
+                            </div>
                         </Link>
-                        {title && !hideDefaultTitle && (
-                            <span className="hidden sm:inline-flex items-center text-sm font-semibold text-gray-400 dark:text-slate-500">
-                                / {title}
-                            </span>
+                        {mobileMenuOpen && (
+                            <button
+                                type="button"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="md:hidden p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                            >
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M18 6 6 18M6 6l12 12" />
+                                </svg>
+                            </button>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-3 sm:gap-6">
-                        {/* Segmented Tab: Rent / Buy / Sell */}
-                        <div className="hidden md:flex items-center rounded-full bg-gray-100 dark:bg-slate-800 p-1 shadow-inner border border-gray-200/70 dark:border-slate-700/60">
-                            {(['Rent', 'Buy', 'Sell'] as const).map((tab) => (
-                                <button
-                                    key={tab}
-                                    type="button"
-                                    onClick={() => setSelectedTab(tab)}
-                                    className={`rounded-full px-5 py-1.5 text-xs font-bold transition duration-150 ${
-                                        selectedTab === tab
-                                            ? 'bg-[#ffa31a] text-white shadow-sm'
-                                            : 'text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                                    }`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
-                        </div>
+                    {/* Navigation Stack */}
+                    <div className="p-4 space-y-6 flex-1">
+                        {navGroups.map((group) => (
+                            <div key={group.group}>
+                                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+                                    {group.group}
+                                </p>
+                                <nav className="space-y-1">
+                                    {group.items.map((item) => {
+                                        const active = isCurrent(item.href);
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={() => setMobileMenuOpen(false)}
+                                                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                                                    active
+                                                        ? 'bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-400/20'
+                                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <NavIcon name={item.icon} active={active} />
+                                                    <span>{item.label}</span>
+                                                </div>
+                                                {item.badge && (
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
+                                                        {item.badge}
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </nav>
+                            </div>
+                        ))}
+                    </div>
 
-                        {/* 3-OPTION THEME SELECTOR: LIGHT / DARK / SYSTEM */}
-                        <div className="flex items-center rounded-2xl bg-gray-100 dark:bg-slate-800 p-1 border border-gray-200/70 dark:border-slate-700/60 shadow-inner">
+                    {/* User Profile Mini Footer */}
+                    <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center font-black text-sm text-slate-950 shadow-inner shrink-0">
+                                    {auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'A'}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                        {auth?.user?.name || 'Administrator'}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 truncate">Admin Access</p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                title="Log out"
+                                className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                            >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                    <polyline points="16 17 21 12 16 7" />
+                                    <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            {/* BACKDROP FOR MOBILE */}
+            {mobileMenuOpen && (
+                <div
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
+                />
+            )}
+
+            {/* EXPANSIVE MAIN WRAPPER */}
+            <div className="flex-1 flex flex-col min-w-0">
+                
+                {/* MODERN TOP APP BAR */}
+                <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 sticky top-0 z-30 transition-colors">
+                    {/* Left Breadcrumb & Page Info */}
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex items-center gap-2 text-sm text-slate-400 font-medium">
+                            <span className="text-slate-900 dark:text-white font-bold">Admin ERP</span>
+                            <span>/</span>
+                            <span className="text-amber-500 font-semibold">{title}</span>
+                        </div>
+                    </div>
+
+                    {/* Right Toolbar */}
+                    <div className="flex items-center gap-4">
+                        
+                        {/* Live Storefront Button */}
+                        <Link
+                            href="/cars"
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-amber-400 hover:text-amber-500 transition shadow-sm"
+                        >
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span>Live Storefront</span>
+                            <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                        </Link>
+
+                        {/* 3-STATE THEME SELECTOR: LIGHT / DARK / SYSTEM */}
+                        <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/80 dark:border-slate-700/60 shadow-inner">
                             <button
                                 type="button"
                                 onClick={() => handleThemeChange('light')}
-                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                                     themeMode === 'light'
                                         ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-gray-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                                 title="Light Mode"
                             >
@@ -269,35 +392,33 @@ export default function AdminLayout({
                                     <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
                                     <line x1="1" y1="12" x2="3" y2="12" />
                                     <line x1="21" y1="12" x2="23" y2="12" />
-                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                                 </svg>
-                                <span className="hidden sm:inline">Light</span>
+                                <span>Light</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => handleThemeChange('dark')}
-                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                                     themeMode === 'dark'
                                         ? 'bg-slate-900 text-white shadow-sm'
-                                        : 'text-gray-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                                 title="Dark Mode"
                             >
                                 <svg className="h-3.5 w-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                                 </svg>
-                                <span className="hidden sm:inline">Dark</span>
+                                <span>Dark</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => handleThemeChange('system')}
-                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                                     themeMode === 'system'
                                         ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                                 title="System Mode"
                             >
@@ -306,35 +427,7 @@ export default function AdminLayout({
                                     <line x1="8" y1="21" x2="16" y2="21" />
                                     <line x1="12" y1="17" x2="12" y2="21" />
                                 </svg>
-                                <span className="hidden sm:inline">System</span>
-                            </button>
-                        </div>
-
-                        {/* Top Utility Icons */}
-                        <div className="hidden lg:flex items-center gap-3 text-gray-400 dark:text-slate-400">
-                            {/* Support */}
-                            <button
-                                type="button"
-                                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition"
-                                title="Support"
-                            >
-                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                                </svg>
-                            </button>
-
-                            {/* Notifications */}
-                            <button
-                                type="button"
-                                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition relative"
-                                title="Notifications"
-                            >
-                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                                </svg>
-                                <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-[#ffa31a]" />
+                                <span>System</span>
                             </button>
                         </div>
 
@@ -343,37 +436,44 @@ export default function AdminLayout({
                             <button
                                 type="button"
                                 onClick={() => setProfileOpen(!profileOpen)}
-                                className="flex items-center gap-2.5 rounded-full bg-gray-50 dark:bg-slate-800 pl-1.5 pr-3.5 py-1.5 shadow-sm border border-gray-200/80 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700/60 transition"
+                                className="flex items-center gap-2.5 rounded-full bg-slate-50 dark:bg-slate-800/80 pl-1.5 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition shadow-sm"
                             >
-                                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center font-bold text-xs text-white overflow-hidden shadow-inner">
+                                <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center font-bold text-xs text-slate-950 shadow-inner">
                                     {auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'A'}
                                 </div>
                                 <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                                     {auth?.user?.name?.split(' ')[0] || 'Admin'}
                                 </span>
-                                <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <polyline points="6 9 12 15 18 9" />
                                 </svg>
                             </button>
 
                             {profileOpen && (
-                                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 p-2 shadow-2xl border border-gray-100 dark:border-slate-800 z-50">
-                                    <div className="px-3 py-2 border-b border-gray-100 dark:border-slate-800">
+                                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 p-2 shadow-2xl border border-slate-100 dark:border-slate-800 z-50">
+                                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                                         <p className="text-xs font-bold text-slate-900 dark:text-white">{auth?.user?.name || 'Administrator'}</p>
-                                        <p className="text-[11px] text-gray-400 truncate">{auth?.user?.email || 'admin@carplatform.com'}</p>
+                                        <p className="text-[11px] text-slate-400 truncate">{auth?.user?.email || 'admin@carplatform.com'}</p>
                                     </div>
                                     <Link
                                         href="/profile"
-                                        className="block rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800"
+                                        className="block rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                                     >
-                                        My Profile
+                                        Profile Settings
+                                    </Link>
+                                    <Link
+                                        href="/admin/warehouse"
+                                        className="block rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    >
+                                        Stock Management
                                     </Link>
                                     <Link
                                         href="/cars"
-                                        className="block rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800"
+                                        className="block rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                                     >
-                                        Live Showroom
+                                        Customer Showroom
                                     </Link>
+                                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                                     <button
                                         type="button"
                                         onClick={handleLogout}
@@ -387,18 +487,18 @@ export default function AdminLayout({
                     </div>
                 </header>
 
-                {/* MAIN EXPANSIVE CONTENT CONTAINER */}
-                <main className="w-full flex-1 px-6 sm:px-10 lg:px-14 py-8">
+                {/* MAIN PAGE CONTAINER */}
+                <main className="w-full flex-1 px-4 sm:px-8 lg:px-10 py-6 max-w-[1600px] mx-auto">
                     {!hideDefaultTitle && (title || subtitle || actions) && (
-                        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 {title && (
-                                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                                         {title}
-                                    </h2>
+                                    </h1>
                                 )}
                                 {subtitle && (
-                                    <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                         {subtitle}
                                     </p>
                                 )}
