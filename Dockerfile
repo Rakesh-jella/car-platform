@@ -1,21 +1,26 @@
-# ===============================
-# Stage 1: Build Vite frontend
-# ===============================
+# ==========================================
+# Stage 1: Build React/Vite frontend
+# ==========================================
 FROM node:22-alpine AS frontend
+
 WORKDIR /app
-# Install only package.json first for caching
+
+# Install frontend dependencies
 COPY package*.json ./
-RUN npm ci
-# Copy the rest of the source
+RUN npm install
+
+# Copy application source
 COPY . .
-# Build assets
+
+# Build Vite assets
 RUN npm run build
 
-# ===============================
-# Stage 2: Laravel + Apache (PHP runtime)
-# ===============================
+# ==========================================
+# Stage 2: Laravel + Apache
+# ==========================================
 FROM php:8.2-apache
-# Install system dependencies and PHP extensions
+
+# Install required system packages and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -30,7 +35,8 @@ RUN apt-get update && apt-get install -y \
         mbstring \
         gd \
         bcmath \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache rewrite for Laravel
 RUN a2enmod rewrite
@@ -38,62 +44,91 @@ RUN a2enmod rewrite
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Set working directory for Laravel app
+# Set working directory
 WORKDIR /var/www/html
 
-# Copy only composer files first (for caching)
-COPY composer.json composer.lock ./
+# Copy application code
+COPY . .
+
+# Install PHP dependencies
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction \
     --prefer-dist
 
-# Copy the rest of the application (including Laravel source)
-COPY . .
-
 # Copy compiled Vite assets from frontend stage
 COPY --from=frontend /app/public/build ./public/build
 
-# Set proper permissions for Laravel storage & cache dirs
-RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+# Create Laravel writable directories
+RUN mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache
+
+# Set Laravel permissions
+RUN chown -R www-data:www-data \
+    storage \
+    bootstrap/cache \
+    && chmod -R 775 \
+    storage \
+    bootstrap/cache
 
 # Configure Apache DocumentRoot to point to Laravel's public directory
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+
+RUN sed -ri \
+    -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
     /etc/apache2/sites-available/*.conf \
     /etc/apache2/apache2.conf \
     /etc/apache2/conf-available/*.conf
 
-# Allow .htaccess overrides for Laravel routing
-RUN printf '%s\n' '<Directory /var/www/html/public>'
-    '    Options Indexes FollowSymLinks'
-    '    AllowOverride All'
-    '    Require all granted'
-    '</Directory>' >> /etc/apache2/apache2.conf
+# Allow Laravel .htaccess overrides
+RUN printf '%s\n' \
+    '<Directory /var/www/html/public>' \
+    '    Options Indexes FollowSymLinks' \
+    '    AllowOverride All' \
+    '    Require all granted' \
+    '</Directory>' \
+    >> /etc/apache2/apache2.conf
 
-# ===============================
-# Render startup script (adjusted for Port env var)
-# ===============================
-RUN printf '%s\n' '#!/bin/bash' \
+# ==========================================
+# Render startup script (dynamic PORT support)
+# ==========================================
+RUN printf '%s\n' \
+    '#!/bin/bash' \
     'set -e' \
+    '' \
     'PORT_NUM="${PORT:-10000}"' \
-    'echo "Starting Laravel on port ${PORT_NUM}"' \
-    "sed -i 's/^Listen .*/Listen ${PORT_NUM}/' /etc/apache2/ports.conf" \
-    "sed -i 's/<VirtualHost \*:80>/<VirtualHost *:${PORT_NUM}>/' /etc/apache2/sites-available/000-default.conf" \
+    '' \
+    'echo "Starting Laravel application on port ${PORT_NUM}"' \
+    '' \
+    '# Configure Apache to listen on Render assigned port' \
+    'sed -i "s/^Listen .*/Listen ${PORT_NUM}/" /etc/apache2/ports.conf' \
+    'sed -i "s/<VirtualHost \*:[0-9][0-9]*>/<VirtualHost *:${PORT_NUM}>/" /etc/apache2/sites-available/000-default.conf' \
+    '' \
+    '# Clear old Laravel caches' \
     'php artisan config:clear || true' \
     'php artisan route:clear || true' \
     'php artisan view:clear || true' \
+    '' \
+    '# Run database migrations' \
     'php artisan migrate --force || true' \
-    'if [ -n "$APP_KEY" ]; then php artisan config:cache; fi' \
+    '' \
+    '# Cache Laravel configuration when APP_KEY exists' \
+    'if [ -n "$APP_KEY" ]; then' \
+    '    php artisan config:cache' \
+    'fi' \
+    '' \
     'echo "Apache starting..."' \
     'exec apache2-foreground' \
-    > /usr/local/bin/start-app.sh && chmod +x /usr/local/bin/start-app.sh
+    > /usr/local/bin/start-app.sh \
+    && chmod +x /usr/local/bin/start-app.sh
 
-# Expose the port Render expects
+# Expose Render default port
 EXPOSE 10000
 
-# Default command
+# Start application
 CMD ["/usr/local/bin/start-app.sh"]
